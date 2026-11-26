@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>دردشة الصور والصوت المباشر</title>
+  <style>
+    :root {
+      --bg: #070709;
+      --surface: #111116;
+      --surface-2: #181820;
+      --line: #262632;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #6366f1;
+      --danger: #ef4444;
+      --ok: #22c55e;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .controls-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      color: var(--muted);
+    }
+
+    .badge.live {
+      color: var(--ok);
+      border-color: rgba(34, 197, 94, 0.45);
+    }
+
+    .messages {
+      flex: 1;
+      width: 100%;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 18px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+    }
+
+    .bubble {
+      max-width: 84%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      line-height: 1.65;
+      font-size: 15px;
+      word-break: break-word;
+    }
+
+    .bubble.user {
+      align-self: flex-start;
+      background: #151522;
+      border-color: #2d2e45;
+    }
+
+    .bubble.assistant {
+      align-self: flex-end;
+    }
+
+    .bubble img {
+      display: block;
+      max-width: 260px;
+      max-height: 220px;
+      margin-top: 8px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+    }
+
+    .footer {
+      background: var(--surface);
+      border-top: 1px solid var(--line);
+      padding: 12px 14px 16px;
+    }
+
+    .composer {
+      max-width: 860px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .preview {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      border-radius: 12px;
+      width: fit-content;
+    }
+
+    .preview img {
+      width: 48px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 15px;
+      outline: none;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+
+    button {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 11px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      border-color: #3f3f52;
+    }
+
+    button.send {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    button.recording {
+      background: rgba(239, 68, 68, 0.18);
+      border-color: var(--danger);
+      color: #fca5a5;
+    }
+
+    button.compact {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">دردشة الصور والصوت المباشر</div>
+    <div class="controls-bar">
+      <span id="statusBadge" class="badge">جاهز</span>
+      <button id="wsBtn" class="compact" type="button">البث المباشر: إيقاف</button>
+      <button id="ttsBtn" class="compact" type="button">قراءة الرد: تشغيل</button>
+    </div>
+  </header>
+
+  <main id="messages" class="messages"></main>
+
+  <div class="footer">
+    <form id="composerForm" class="composer">
+      <div id="previewBox" class="preview">
+        <img id="previewImg" alt="معاينة" />
+        <span id="previewLabel" style="font-size:13px; color:var(--muted);"></span>
+        <button id="removeImgBtn" class="compact" type="button">حذف</button>
+      </div>
+
+      <div class="input-row">
+        <input id="imageInput" type="file" accept="image/*" hidden />
+        <button id="imageBtn" type="button">صورة</button>
+        <button id="micBtn" type="button">ميكروفون</button>
+        <input id="textInput" type="text" placeholder="اكتب رسالتك أو الصق صورة..." autocomplete="off" />
+        <button class="send" type="submit">إرسال</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const messagesEl = document.getElementById("messages");
+    const composerForm = document.getElementById("composerForm");
+    const textInput = document.getElementById("textInput");
+    const imageInput = document.getElementById("imageInput");
+    const imageBtn = document.getElementById("imageBtn");
+    const previewBox = document.getElementById("previewBox");
+    const previewImg = document.getElementById("previewImg");
+    const previewLabel = document.getElementById("previewLabel");
+    const removeImgBtn = document.getElementById("removeImgBtn");
+    const micBtn = document.getElementById("micBtn");
+    const statusBadge = document.getElementById("statusBadge");
+    const wsBtn = document.getElementById("wsBtn");
+    const ttsBtn = document.getElementById("ttsBtn");
+
+    let attachedImage = null;
+    let recorder = null;
+    let chunks = [];
+    let recording = false;
+    let speakReplies = true;
+    let socket = null;
+
+    function setStatus(label, isLive = false) {
+      statusBadge.textContent = label;
+      statusBadge.classList.toggle("live", isLive);
+    }
+
+    function addBubble(role, text, imgUrl = null) {
+      const div = document.createElement("div");
+      div.className = `bubble ${role}`;
+      if (text) {
+        const p = document.createElement("p");
+        p.textContent = text;
+        div.appendChild(p);
+      }
+      if (imgUrl) {
+        const img = document.createElement("img");
+        img.src = imgUrl;
+        div.appendChild(img);
+      }
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function speakText(text) {
+      if (!speakReplies || !("speechSynthesis" in window) || !text) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "ar-SA";
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function setImageFile(file) {
+      if (!file || !file.type.startsWith("image/")) return;
+      attachedImage = file;
+      previewImg.src = URL.createObjectURL(file);
+      previewLabel.textContent = file.name || "صورة مرفقة";
+      previewBox.style.display = "flex";
+    }
+
+    function clearImageFile() {
+      attachedImage = null;
+      imageInput.value = "";
+      previewImg.src = "";
+      previewBox.style.display = "none";
+    }
+
+    imageBtn.addEventListener("click", () => imageInput.click());
+    imageInput.addEventListener("change", () => {
+      if (imageInput.files[0]) setImageFile(imageInput.files[0]);
+    });
+    removeImgBtn.addEventListener("click", clearImageFile);
+
+    window.addEventListener("paste", (e) => {
+      const imgItem = [...(e.clipboardData?.items || [])].find((item) =>
+        item.type.startsWith("image/")
+      );
+      if (imgItem) setImageFile(imgItem.getAsFile());
+    });
+
+    composerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = textInput.value.trim();
+      if (!text && !attachedImage) return;
+
+      const previewUrl = attachedImage ? URL.createObjectURL(attachedImage) : null;
+      addBubble("user", text, previewUrl);
+
+      const formData = new FormData();
+      formData.append("message", text);
+      if (attachedImage) formData.append("image", attachedImage);
+
+      textInput.value = "";
+      clearImageFile();
+      setStatus("جاري الإرسال...");
+
+      try {
+        const res = await fetch("/api/chat", { method: "POST", body: formData });
+        const data = await res.json();
+        const output = data.reply || data.error || "تم الاستلام.";
+        addBubble("assistant", output);
+        speakText(output);
+        setStatus("جاهز", Boolean(socket));
+      } catch {
+        addBubble("assistant", "تعذر الاتصال بالسيرفر.");
+        setStatus("خطأ اتصال");
+      }
+    });
+
+    micBtn.addEventListener("click", async () => {
+      if (!recording) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          chunks = [];
+          recorder = new MediaRecorder(stream);
+
+          recorder.ondataavailable = (ev) => {
+            if (ev.data.size > 0) {
+              chunks.push(ev.data);
+              if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(ev.data);
+              }
+            }
+          };
+
+          recorder.onstop = async () => {
+            stream.getTracks().forEach((track) => track.stop());
+            const audioBlob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+            addBubble("user", "رسالة صوتية");
+            setStatus("جاري معالجة الصوت...");
+
+            const fd = new FormData();
+            fd.append("audio", audioBlob, "recording.webm");
+
+            try {
+              const res = await fetch("/api/voice", { method: "POST", body: fd });
+              const data = await res.json();
+              const output = data.reply || data.error || "تم استلام الصوت.";
+              addBubble("assistant", output);
+              speakText(output);
+              setStatus("جاهز", Boolean(socket));
+            } catch {
+              addBubble("assistant", "حدث خطأ أثناء إرسال المقطع الصوتي.");
+              setStatus("خطأ صوت");
+            }
+          };
+
+          recorder.start(400);
+          recording = true;
+          micBtn.classList.add("recording");
+          micBtn.textContent = "إيقاف";
+          setStatus("جاري الاستماع...", true);
+        } catch {
+          setStatus("صلاحية الميكروفون مرفوضة");
+        }
+      } else {
+        recorder.stop();
+        recording = false;
+        micBtn.classList.remove("recording");
+        micBtn.textContent = "ميكروفون";
+      }
+    });
+
+    wsBtn.addEventListener("click", () => {
+      if (!socket) {
+        const wsProto = location.protocol === "https:" ? "wss:" : "ws:";
+        socket = new WebSocket(`${wsProto}//${location.host}/ws/live-voice`);
+        socket.onopen = () => {
+          wsBtn.textContent = "البث المباشر: تشغيل";
+          setStatus("بث مباشر نشط", true);
+        };
+        socket.onclose = () => {
+          socket = null;
+          wsBtn.textContent = "البث المباشر: إيقاف";
+          setStatus("جاهز");
+        };
+      } else {
+        socket.close();
+      }
+    });
+
+    ttsBtn.addEventListener("click", () => {
+      speakReplies = !speakReplies;
+      ttsBtn.textContent = `قراءة الرد: ${speakReplies ? "تشغيل" : "إيقاف"}`;
+      if (!speakReplies && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    });
+  </script>
+</body>
+</html>
